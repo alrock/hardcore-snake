@@ -1,10 +1,3 @@
-width = canvas.width
-height = canvas.height
-context = canvas.getContext('2d')
-
-context.fillStyle = '#00ff00'
-context.fillRect(0,0,width,height)
-
 compareCells = (c1, c2) ->
   return c1.length is c2.length and c1.every (elem, i) -> elem is c2[i]
     
@@ -49,9 +42,48 @@ class Field
   normalizeCell: (cell) ->
     return [(cell[0] + @width) % @width , (cell[1] + @height) % @height]
   
+class HTMLGraphics
+  constructor: (@field) ->
+    @cells = []
+    for c in [0..@field.height-1]
+      @cells.push []
+      
+    @createField()
+    
+    
+  createField: ->
+
+    for row in [0..@field.height-1]
+      new_row = document.createElement "tr"
+      
+      for cols in [0..@field.width-1]
+        new_cell = document.createElement "td"
+        @cells[row].push new_cell
+        new_row.appendChild new_cell
+        
+      field.appendChild new_row
+      
+    
+  beginDraw: ->
+    for row in @cells
+      for cell in row
+        cell.className = ""
+        
+  drawSnake: (snake) ->
+    for cell in snake.body
+      @cells[cell[1]][cell[0]].className = snake.color
+    cell = snake.body[0]
+    @cells[cell[1]][cell[0]].className = snake.color + "head"
+    
+  drawFood: (food) ->
+    food_class = "food"
+    
+    for f in food
+      @cells[f[1]][f[0]].className = food_class
+  
 class Graphics
-  constructor: (@canvas, @field) ->
-    @context = @canvas.getContext('2d')
+  constructor: (@field) ->
+    @context = canvas.getContext('2d')
     
   beginDraw: ->
     @context.fillStyle = '#00ff00'
@@ -83,20 +115,22 @@ class Graphics
       @drawCell(f[0], f[1])
 
 class Game
-  constructor: (@canvas, @width, @height) ->
+  constructor: (@width, @height) ->
     @field = new Field @width, @height
-    @graphics = new Graphics @canvas, @field
+    @graphics = new HTMLGraphics @field
     
     snake1 = new Snake 0, 0
-    snake1.color = '#ff00ff'
+    # snake1.color = '#ff00ff'
+    snake1.color = 'snake1'
     snake2 = new Snake @width - 1, @height - 1
-    snake2.color = '#ffff00'
+    #snake2.color = '#ffff00'
+    snake2.color = 'snake2'
     snake2.direction = [0, -1]
     
     @field.snakes.push snake1
     @field.snakes.push snake2
-    @user1 = new KeyboardController @canvas, snake1
-    @user2 = new KeyboardController2 @canvas, snake2
+    #@user1 = new KeyboardController @canvas, snake1
+    #@user2 = new KeyboardController2 @canvas, snake2
     @ai1 = new AIController @field, snake1
     @ai2 = new AIController2 @field, snake2
     @current_snake = 0
@@ -120,8 +154,9 @@ class Game
     @ai2.update()
   
   updateSnake: (snake) ->
-    return if snake.dead
+    #return if snake.dead
     
+    snake.dead = false
     next_cell = @field.normalizeCell snake.nextCell()
     food_index =  @field.foodIndex next_cell[0], next_cell[1]
     if food_index >= 0
@@ -136,7 +171,15 @@ class Game
       if !snake.dead 
         direction = if snake.isGoodDirection() then snake.next_direction else snake.direction
         snake.move next_cell, direction
+      else
+        @trimTail snake
+  
+  
+  trimTail: (snake) ->
+    return if snake.body.length <= 1
     
+    @field.food.push snake.body.pop()
+  
   updateFood: () ->
     count = 3 - @field.food.length
     
@@ -396,11 +439,11 @@ class AStar
     direction[0] -= @field.width if direction[0] >  1
     direction[1] += @field.height if direction[1] < -1
     direction[1] -= @field.height if direction[1] >  1
-    
+    #console.log(@count)
     return [direction, target_g]
         
     
-game = new Game canvas, 20, 20
+game = new Game 20, 20
 game.draw()
 
 i = 10000
